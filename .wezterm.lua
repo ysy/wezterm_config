@@ -4,8 +4,256 @@ local act = wezterm.action
 
 -- 存储手动标题
 local custom_titles = {}
+local pane_title_state = {}
 
 local config = wezterm.config_builder and wezterm.config_builder() or {}
+
+local SHELL_PROCESSES = {
+	pwsh = true,
+	powershell = true,
+	cmd = true,
+	bash = true,
+	zsh = true,
+	fish = true,
+	nu = true,
+}
+
+local NOISY_CHILD_PROCESSES = {
+	rg = true,
+	fd = true,
+	git = true,
+	grep = true,
+	findstr = true,
+	["lua-language-server"] = true,
+	["clangd"] = true,
+	["pyright-langserver"] = true,
+	node = true,
+	lua_language_server = true,
+}
+
+local TITLE_PROCESS_PATTERNS = {
+	{ pattern = "nvim", name = "nvim" },
+	{ pattern = "vim", name = "vim" },
+	{ pattern = "hx", name = "hx" },
+	{ pattern = "helix", name = "hx" },
+	{ pattern = "lazygit", name = "lazygit" },
+	{ pattern = "yazi", name = "yazi" },
+	{ pattern = "btop", name = "btop" },
+	{ pattern = "htop", name = "htop" },
+	{ pattern = "less", name = "less" },
+	{ pattern = "ssh", name = "ssh" },
+	{ pattern = "powershell", name = "pwsh" },
+	{ pattern = "pwsh", name = "pwsh" },
+	{ pattern = "cmd", name = "cmd" },
+}
+
+local PROCESS_ALIASES = {
+	powershell = "pwsh",
+	pwsh = "pwsh",
+	cmd = "cmd",
+	bash = "bash",
+	nvim = "nvim",
+	vim = "vim",
+}
+
+local function basename(path)
+	if not path or path == "" then
+		return nil
+	end
+
+	return path:gsub("[/\\]+$", ""):match("([^/\\]+)$")
+end
+
+local function normalize_process_name(process_name)
+	local name = basename(process_name)
+	if not name or name == "" then
+		return nil
+	end
+
+	name = name:lower():gsub("%.exe$", "")
+	name = name:gsub("[^%w%-%._]", "_")
+	return PROCESS_ALIASES[name] or name
+end
+
+local function uri_to_path(uri)
+	if not uri then
+		return nil
+	end
+
+	if type(uri) == "userdata" or type(uri) == "table" then
+		if uri.file_path and uri.file_path ~= "" then
+			return uri.file_path
+		end
+		if uri.path and uri.path ~= "" then
+			return uri.path
+		end
+	end
+
+	local value = tostring(uri)
+	value = value:gsub("^file:///", "")
+	value = value:gsub("^file://", "")
+	value = value:gsub("%%(%x%x)", function(hex)
+		return string.char(tonumber(hex, 16))
+	end)
+	return value
+end
+
+local function process_info_name(info)
+	if not info then
+		return nil
+	end
+
+	return normalize_process_name(info.executable or info.name)
+end
+
+local function first_non_empty(...)
+	for i = 1, select("#", ...) do
+		local value = select(i, ...)
+		if value and value ~= "" then
+			return value
+		end
+	end
+
+	return nil
+end
+
+local function find_best_process_in_tree(info, depth)
+	if not info then
+		return nil, -1
+	end
+
+	depth = depth or 0
+	local best_name = nil
+	local best_depth = -1
+
+	for _, child in pairs(info.children or {}) do
+		local child_name, child_depth = find_best_process_in_tree(child, depth + 1)
+		if child_name and child_depth > best_depth then
+			best_name = child_name
+			best_depth = child_depth
+		end
+	end
+
+	local current_name = process_info_name(info)
+	if current_name and not NOISY_CHILD_PROCESSES[current_name] and not SHELL_PROCESSES[current_name] then
+		if depth >= best_depth then
+			return current_name, depth
+		end
+	end
+
+	return best_name, best_depth
+end
+
+local function find_best_cwd_in_tree(info, depth)
+	if not info then
+		return nil, -1
+	end
+
+	depth = depth or 0
+	local best_cwd = first_non_empty(info.cwd)
+	local best_depth = best_cwd and depth or -1
+
+	for _, child in pairs(info.children or {}) do
+		local child_cwd, child_depth = find_best_cwd_in_tree(child, depth + 1)
+		if child_cwd and child_depth > best_depth then
+			best_cwd = child_cwd
+			best_depth = child_depth
+		end
+	end
+
+	return best_cwd, best_depth
+end
+
+local function safe_pane_call(pane, method_name, ...)
+	if not pane then
+		return nil
+	end
+
+	local args = { ... }
+	local ok, value = pcall(function()
+		return pane[method_name](pane, table.unpack(args))
+	end)
+	if ok then
+		return value
+	end
+
+	return nil
+end
+
+local function current_dir_name(pane)
+	local cwd_uri = safe_pane_call(pane, "get_current_working_dir")
+	local cwd = uri_to_path(cwd_uri)
+	local info = safe_pane_call(pane, "get_foreground_process_info")
+	if (not cwd or cwd == "") and info then
+		local proc_cwd = select(1, find_best_cwd_in_tree(info))
+		cwd = proc_cwd
+	end
+	if not cwd or cwd == "" then
+		return "?"
+	end
+
+	cwd = cwd:gsub("[/\\]+$", "")
+	return cwd:match("([^/\\]+)$") or cwd
+end
+
+local function process_from_title(title)
+	if not title or title == "" then
+		return nil
+	end
+
+	local lowered = title:lower()
+	for _, item in ipairs(TITLE_PROCESS_PATTERNS) do
+		if lowered:find(item.pattern, 1, true) then
+			return item.name
+		end
+	end
+
+	return nil
+end
+
+local function get_tab_id(tab)
+	return tostring(tab:tab_id())
+end
+
+local function resolve_program_name(pane)
+	local pane_id = tostring(safe_pane_call(pane, "pane_id") or "unknown")
+	local state = pane_title_state[pane_id] or {}
+	local info = safe_pane_call(pane, "get_foreground_process_info")
+	local foreground = normalize_process_name(safe_pane_call(pane, "get_foreground_process_name"))
+	local title_program = process_from_title(safe_pane_call(pane, "get_title"))
+	local is_alt_screen = safe_pane_call(pane, "is_alt_screen_active")
+	local tree_program = select(1, find_best_process_in_tree(info))
+
+	local program = tree_program or foreground
+
+	-- alt screen 下优先相信 TUI 程序自己设置的 title；
+	-- 对噪声子进程保持上一个稳定的主程序名，避免 nvim 被 LSP/rg 覆盖。
+	if is_alt_screen and title_program and not NOISY_CHILD_PROCESSES[title_program] then
+		program = title_program
+	elseif is_alt_screen and state.program and not SHELL_PROCESSES[state.program] then
+		program = state.program
+	elseif foreground and NOISY_CHILD_PROCESSES[foreground] and state.program and not SHELL_PROCESSES[state.program] then
+		program = state.program
+	elseif title_program and not NOISY_CHILD_PROCESSES[title_program] and not SHELL_PROCESSES[foreground or ""] then
+		program = title_program
+	end
+
+	program = program or state.program or "shell"
+	state.program = program
+	pane_title_state[pane_id] = state
+
+	return program
+end
+
+local function dynamic_tab_title_from_pane(pane)
+	if not pane then
+		return "Terminal"
+	end
+
+	local program = resolve_program_name(pane)
+	local dir = current_dir_name(pane)
+	return string.format("%s-%s", program, dir)
+end
 
 -- ==========================================
 -- 1. 基础配置 & 启动最大化
@@ -21,6 +269,7 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.hide_tab_bar_if_only_one_tab = false
+config.status_update_interval = 200
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
 	"Microsoft YaHei",
@@ -41,7 +290,14 @@ config.mouse_bindings = {
 wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
 	local index = tab.tab_index + 1
 	local id = tostring(tab.tab_id)
-	local title = custom_titles[id] or "Terminal"
+	local title = custom_titles[id]
+	if not title or title == "" then
+		title = tab.tab_title
+	end
+	if not title or title == "" then
+		title = tab.active_pane.title
+	end
+	title = wezterm.truncate_right(title, math.max(max_width - 4, 1))
 
 	-- 【核心改动】从当前选中的 color_scheme 中自动提取 Tab 栏配色
 	-- 这样你就不需要手动写 #89b4fa 等颜色代码了
@@ -73,12 +329,16 @@ config.keys = {
 		key = ",",
 		mods = "LEADER",
 		action = act.PromptInputLine({
-			description = "Enter new name for tab",
+			description = "Enter new name for tab (empty to reset)",
 			action = wezterm.action_callback(function(window, pane, line)
-				if line then
-					custom_titles[tostring(window:active_tab():tab_id())] = line
-					-- SetTabTitle 虽然在 Windows 下刷新慢，但它能触发重绘信号
-					window:perform_action(act.SetTabTitle(line), pane)
+				local active_tab = window:mux_window():active_tab()
+				local active_tab_id = get_tab_id(active_tab)
+				if line and line ~= "" then
+					custom_titles[active_tab_id] = line
+					active_tab:set_title(line)
+				elseif line == "" then
+					custom_titles[active_tab_id] = nil
+					active_tab:set_title(dynamic_tab_title_from_pane(pane))
 				end
 			end),
 		}),
@@ -183,9 +443,18 @@ wezterm.on("update-status", function(window, pane)
 	local cells = {}
 	local active_key_table = window:active_key_table()
 	local workspace = window:active_workspace()
+	local tab = window:mux_window():active_tab()
+	local tab_id = get_tab_id(tab)
 
 	-- 【核心】获取当前主题已解析的完整色板
 	local palette = window:effective_config().resolved_palette
+
+	if tab and not custom_titles[tab_id] then
+		local title = dynamic_tab_title_from_pane(pane)
+		if tab:get_title() ~= title then
+			tab:set_title(title)
+		end
+	end
 
 	-- 1. 模式指示器逻辑
 	if active_key_table == "copy_mode" then
