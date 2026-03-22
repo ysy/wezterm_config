@@ -41,9 +41,13 @@ function Invoke-WezTermTitledCommand {
         [string]$Program,
         [Parameter(Mandatory = $true)]
         [string]$Executable,
-        [Parameter(Mandatory = $true)]
+        [AllowNull()]
         [object[]]$Arguments
     )
+
+    if ($null -eq $Arguments) {
+        $Arguments = @()
+    }
 
     Set-WezTermPaneTitle -Program $Program
     try {
@@ -55,6 +59,23 @@ function Invoke-WezTermTitledCommand {
     }
 }
 
+function Resolve-WezTermWrappedExecutable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName
+    )
+
+    $resolved = Get-Command $CommandName -All -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandType -in @("Application", "ExternalScript") } |
+        Select-Object -First 1
+
+    if (-not $resolved) {
+        return $null
+    }
+
+    return ($resolved.Path, $resolved.Source, $resolved.Definition | Where-Object { $_ } | Select-Object -First 1)
+}
+
 function Register-WezTermWrappedCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -62,12 +83,12 @@ function Register-WezTermWrappedCommand {
         [string]$Executable = $Name
     )
 
-    $resolved = Get-Command $Executable -CommandType Application -ErrorAction SilentlyContinue
-    if (-not $resolved) {
+    $resolvedPath = Resolve-WezTermWrappedExecutable -CommandName $Executable
+    if (-not $resolvedPath) {
         return
     }
 
-    $escapedExecutable = $resolved.Source.Replace("'", "''")
+    $escapedExecutable = $resolvedPath.Replace("'", "''")
     $escapedName = $Name.Replace("'", "''")
     $definition = @"
 param([Parameter(ValueFromRemainingArguments = `$true)][object[]]`$CommandArgs)
@@ -89,8 +110,12 @@ function global:wtx {
         [object[]]$CommandArgs
     )
 
-    $resolved = Get-Command $Program -CommandType Application -ErrorAction Stop
-    Invoke-WezTermTitledCommand -Program $Program -Executable $resolved.Source -Arguments $CommandArgs
+    $resolvedPath = Resolve-WezTermWrappedExecutable -CommandName $Program
+    if (-not $resolvedPath) {
+        throw "Command not found or not executable: $Program"
+    }
+
+    Invoke-WezTermTitledCommand -Program $Program -Executable $resolvedPath -Arguments $CommandArgs
 }
 
 function global:Add-WezTermWrappedCommand {
