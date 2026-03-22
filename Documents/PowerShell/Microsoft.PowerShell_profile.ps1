@@ -1,5 +1,10 @@
 $script:wezterm_original_prompt = $function:prompt
 $script:wezterm_wrapped_commands = [System.Collections.Generic.List[string]]::new()
+$script:wezterm_default_wrapped_commands = @(
+    "nvim",
+    "vim",
+    "codex"
+)
 
 function Set-WezTermPaneTitle {
     param(
@@ -109,7 +114,7 @@ Invoke-WezTermTitledCommand -Program '$escapedName' -Executable '$escapedExecuta
     return $true
 }
 
-foreach ($commandName in @("nvim", "vim", "codex")) {
+foreach ($commandName in $script:wezterm_default_wrapped_commands) {
     [void](Register-WezTermWrappedCommand -Name $commandName)
 }
 

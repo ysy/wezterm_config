@@ -39,7 +39,7 @@ pwsh -NoLogo -ExecutionPolicy Bypass -File .\scripts\install.ps1
 
 - Directory tracking depends on the PowerShell profile. If only `.wezterm.lua` is copied, tab titles will not follow `cd` reliably.
 - Wrapped commands are intentionally handled in the PowerShell profile instead of guessing processes inside WezTerm. This is shorter and more reliable on Windows.
-- Built-in wrapped commands are `nvim`, `vim`, and `codex`.
+- Default wrapped commands are configured at the top of [`Documents/PowerShell/Microsoft.PowerShell_profile.ps1`](C:\Users\cnnby\Documents\PowerShell\Microsoft.PowerShell_profile.ps1) in `$script:wezterm_default_wrapped_commands`.
 - For any other one-off command, use `wtx <program> [args...]`. Example: `wtx lazygit`.
 - To add another persistent wrapper in the current session, run `Add-WezTermWrappedCommand <name>`.
 - The PowerShell profile only emits OSC 7 when `TERM_PROGRAM=WezTerm`, so it is safe to reuse in other terminals.
