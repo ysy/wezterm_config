@@ -6,6 +6,73 @@ local custom_titles = {}
 
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 
+local function basename(path)
+	if not path or path == "" then
+		return nil
+	end
+
+	return path:gsub("[/\\]+$", ""):match("([^/\\]+)$")
+end
+
+local function normalize_process_name(process_name)
+	local name = basename(process_name)
+	if not name or name == "" then
+		return nil
+	end
+
+	return name:lower():gsub("%.exe$", "")
+end
+
+local function looks_like_managed_title(title)
+	if not title or title == "" then
+		return false
+	end
+
+	if #title > 80 then
+		return false
+	end
+
+	if title:find("[/\\:]") then
+		return false
+	end
+
+	return title:match("^[^%s]+%-.+$") ~= nil
+end
+
+local function safe_fallback_title(tab)
+	local pane = tab.active_pane
+	if not pane then
+		return "Terminal"
+	end
+
+	local process_name = pane.foreground_process_name
+	if not process_name and pane.get_foreground_process_name then
+		local ok, value = pcall(function()
+			return pane:get_foreground_process_name()
+		end)
+		if ok then
+			process_name = value
+		end
+	end
+
+	return normalize_process_name(process_name) or "Terminal"
+end
+
+local function resolved_tab_title(tab)
+	local id = tostring(tab.tab_id)
+	local title = custom_titles[id]
+	if title and title ~= "" then
+		return title
+	end
+
+	local pane_title = tab.active_pane and tab.active_pane.title or nil
+	if looks_like_managed_title(pane_title) then
+		return pane_title
+	end
+
+	return safe_fallback_title(tab)
+end
+
 wezterm.on("gui-startup", function(cmd)
 	local _, _, window = mux.spawn_window(cmd or {})
 	window:gui_window():maximize()
@@ -30,16 +97,7 @@ config.mouse_bindings = {
 
 wezterm.on("format-tab-title", function(tab, tabs, panes, cfg, hover, max_width)
 	local index = tab.tab_index + 1
-	local id = tostring(tab.tab_id)
-	local title = custom_titles[id]
-
-	if not title or title == "" then
-		title = tab.active_pane.title
-	end
-	if not title or title == "" then
-		title = "Terminal"
-	end
-
+	local title = resolved_tab_title(tab)
 	title = wezterm.truncate_right(title, math.max(max_width - 4, 1))
 	local palette = cfg.resolved_palette.tab_bar
 

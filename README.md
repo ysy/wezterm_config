@@ -38,6 +38,7 @@ pwsh -NoLogo -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ## Notes
 
 - Directory tracking depends on the PowerShell profile. If only `.wezterm.lua` is copied, tab titles will not follow `cd` reliably.
+- If the PowerShell profile is not loaded, WezTerm falls back to a stable safe title such as `pwsh` or `Terminal` instead of showing random pane titles.
 - Wrapped commands are intentionally handled in the PowerShell profile instead of guessing processes inside WezTerm. This is shorter and more reliable on Windows.
 - Default wrapped commands are configured at the top of [`Documents/PowerShell/Microsoft.PowerShell_profile.ps1`](C:\Users\cnnby\Documents\PowerShell\Microsoft.PowerShell_profile.ps1) in `$script:wezterm_default_wrapped_commands`.
 - For any other one-off command, use `wtx <program> [args...]`. Example: `wtx lazygit`.
