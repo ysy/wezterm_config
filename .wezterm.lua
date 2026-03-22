@@ -97,7 +97,12 @@ local function copy_mode_escape_action(window, pane)
 end
 
 local function workspace_choices()
-	local choices = {}
+	local choices = {
+		{
+			id = "__create_new_workspace__",
+			label = "[Create New Session...]",
+		},
+	}
 	for _, name in ipairs(mux.get_workspace_names()) do
 		table.insert(choices, {
 			id = name,
@@ -110,6 +115,27 @@ local function workspace_choices()
 	end)
 
 	return choices
+end
+
+local function prompt_for_new_workspace(window, pane)
+	window:perform_action(
+		act.PromptInputLine({
+			description = "Enter name for new session",
+			action = wezterm.action_callback(function(inner_window, inner_pane, line)
+				if not line or line == "" then
+					return
+				end
+
+				inner_window:perform_action(
+					act.SwitchToWorkspace({
+						name = line,
+					}),
+					inner_pane
+				)
+			end),
+		}),
+		pane
+	)
 end
 
 local function pane_id_from_pane(pane)
@@ -227,6 +253,11 @@ config.keys = {
 					action = wezterm.action_callback(function(inner_window, inner_pane, id, label)
 						local name = id or label
 						if not name or name == "" then
+							return
+						end
+
+						if name == "__create_new_workspace__" then
+							prompt_for_new_workspace(inner_window, inner_pane)
 							return
 						end
 
