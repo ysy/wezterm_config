@@ -6,7 +6,8 @@ This repository tracks the minimum files needed to reproduce the current WezTerm
 - `Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 
 The WezTerm config controls tab naming and UI behavior.
-The PowerShell profile sends OSC 7 so WezTerm can track the current directory after `cd`.
+The PowerShell profile sends OSC 7 so WezTerm can track the current directory after `cd`,
+and it also sets the pane title for `pwsh` and `nvim`.
 
 ## Files
 
@@ -37,5 +38,6 @@ pwsh -NoLogo -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ## Notes
 
 - Directory tracking depends on the PowerShell profile. If only `.wezterm.lua` is copied, tab titles will not follow `cd` reliably.
+- `nvim` detection is intentionally implemented in the PowerShell profile instead of guessing processes inside WezTerm. This is shorter and more reliable on Windows.
 - The PowerShell profile only emits OSC 7 when `TERM_PROGRAM=WezTerm`, so it is safe to reuse in other terminals.
 - `im-select.exe` is referenced by `.wezterm.lua`. If a new machine does not have it, either install it or remove that hook.
