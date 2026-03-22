@@ -160,15 +160,28 @@ config.key_tables = {
 		{ key = "n", mods = "NONE", action = act.CopyMode("NextMatch") },
 		{ key = "N", mods = "NONE", action = act.CopyMode("PriorMatch") },
 		{ key = "0", mods = "NONE", action = act.CopyMode("MoveToStartOfLine") },
+		{ key = "^", mods = "SHIFT", action = act.CopyMode("MoveToStartOfLineContent") },
 		{ key = "$", mods = "SHIFT", action = act.CopyMode("MoveToEndOfLineContent") },
 		{ key = "w", mods = "NONE", action = act.CopyMode("MoveForwardWord") },
 		{ key = "b", mods = "NONE", action = act.CopyMode("MoveBackwardWord") },
 		{ key = "e", mods = "NONE", action = act.CopyMode("MoveForwardWordEnd") },
+		{ key = "H", mods = "SHIFT", action = act.CopyMode("MoveToViewportTop") },
+		{ key = "M", mods = "SHIFT", action = act.CopyMode("MoveToViewportMiddle") },
+		{ key = "L", mods = "SHIFT", action = act.CopyMode("MoveToViewportBottom") },
+		{ key = "o", mods = "NONE", action = act.CopyMode("MoveToSelectionOtherEnd") },
 		{ key = "Space", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Cell" }) },
 		{ key = "v", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Cell" }) },
 		{ key = "V", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Line" }) },
 		{
 			key = "Enter",
+			mods = "NONE",
+			action = act.Multiple({
+				{ CopyTo = "ClipboardAndPrimarySelection" },
+				{ CopyMode = "Close" },
+			}),
+		},
+		{
+			key = "y",
 			mods = "NONE",
 			action = act.Multiple({
 				{ CopyTo = "ClipboardAndPrimarySelection" },
