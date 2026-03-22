@@ -5,7 +5,7 @@ local act = wezterm.action
 local custom_titles = {}
 local leader_state_by_window = {}
 
-local config = wezterm.config_builder and wezterm.config_builder() or {}
+local config = wezterm.config_builder()
 
 local function basename(path)
 	if not path or path == "" then
