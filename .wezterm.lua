@@ -126,6 +126,9 @@ config.key_tables = {
 			}),
 		},
 
+		-- 按下 Ctrl + u 清空搜索关键字
+		{ key = "u", mods = "CTRL", action = act.CopyMode("ClearPattern") },
+
 		-- 退出复制模式
 		{ key = "q", mods = "NONE", action = act.CopyMode("Close") },
 		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
@@ -141,8 +144,10 @@ config.key_tables = {
 
 	-- 当你按下 / 弹出搜索框后的模式
 	search_mode = {
+		-- 按下 Ctrl + u 清空搜索关键字
+		{ key = "u", mods = "CTRL", action = act.CopyMode("ClearPattern") },
 		-- 搜索框里按回车：跳到匹配项并回到复制模式
-		{ key = "Enter", mods = "NONE", action = "ActivateCopyMode"},
+		{ key = "Enter", mods = "NONE", action = "ActivateCopyMode" },
 		-- 搜索框里按 Esc：取消搜索
 		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
 		-- 在搜索框里也可以通过 Ctrl+n/p 预览
