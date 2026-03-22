@@ -170,6 +170,7 @@ config.hide_tab_bar_if_only_one_tab = false
 config.status_update_interval = 200
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
+	-- { family = "FiraCode Nerd Font", weight = "Light" },
 	"Microsoft YaHei",
 })
 config.font_size = 11.0
