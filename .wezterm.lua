@@ -80,6 +80,22 @@ local function switch_to_english_input()
 	end)
 end
 
+local function copy_mode_escape_action(window, pane)
+	local has_selection = false
+
+	pcall(function()
+		local text = window:get_selection_text_for_pane(pane)
+		has_selection = text ~= nil and text ~= ""
+	end)
+
+	if has_selection then
+		window:perform_action(act.CopyMode("ClearSelectionMode"), pane)
+		return
+	end
+
+	window:perform_action(act.CopyMode("Close"), pane)
+end
+
 wezterm.on("gui-startup", function(cmd)
 	local _, _, window = mux.spawn_window(cmd or {})
 	window:gui_window():maximize()
@@ -190,7 +206,13 @@ config.key_tables = {
 		},
 		{ key = "u", mods = "CTRL", action = act.CopyMode("ClearPattern") },
 		{ key = "q", mods = "NONE", action = act.CopyMode("Close") },
-		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
+		{
+			key = "Escape",
+			mods = "NONE",
+			action = wezterm.action_callback(function(window, pane)
+				copy_mode_escape_action(window, pane)
+			end),
+		},
 		{ key = "h", mods = "NONE", action = act.CopyMode("MoveLeft") },
 		{ key = "j", mods = "NONE", action = act.CopyMode("MoveDown") },
 		{ key = "k", mods = "NONE", action = act.CopyMode("MoveUp") },
