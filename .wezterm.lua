@@ -83,6 +83,13 @@ config.keys = {
 			end),
 		}),
 	},
+
+	-- 【新增】粘贴 (Leader + ])
+	{ key = "]", mods = "LEADER", action = act.PasteFrom("Clipboard") },
+
+	-- 进入复制模式 (Leader + [)
+	{ key = "[", mods = "LEADER", action = act.ActivateCopyMode },
+
 	-- 基础功能
 	{ key = "c", mods = "LEADER", action = act.SpawnTab("CurrentPaneDomain") },
 	{ key = "n", mods = "LEADER", action = act.ActivateTabRelative(1) },
