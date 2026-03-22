@@ -204,6 +204,7 @@ config.key_tables = {
 				{ CopyMode = "Close" },
 			}),
 		},
+		{ key = "u", mods = "NONE", action = act.CopyMode("ClearSelectionMode") },
 		{ key = "u", mods = "CTRL", action = act.CopyMode("ClearPattern") },
 		{ key = "q", mods = "NONE", action = act.CopyMode("Close") },
 		{
