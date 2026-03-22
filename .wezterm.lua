@@ -3,6 +3,7 @@ local mux = wezterm.mux
 local act = wezterm.action
 
 local custom_titles = {}
+local leader_state_by_window = {}
 
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 
@@ -73,6 +74,12 @@ local function resolved_tab_title(tab)
 	return safe_fallback_title(tab)
 end
 
+local function switch_to_english_input()
+	pcall(function()
+		wezterm.run_child_process({ "im-select.exe", "1033" })
+	end)
+end
+
 wezterm.on("gui-startup", function(cmd)
 	local _, _, window = mux.spawn_window(cmd or {})
 	window:gui_window():maximize()
@@ -84,6 +91,7 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.hide_tab_bar_if_only_one_tab = false
+config.status_update_interval = 100
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
 	"Microsoft YaHei",
@@ -194,9 +202,7 @@ end
 
 wezterm.on("window-focus-changed", function(window, pane)
 	if window:is_focused() then
-		pcall(function()
-			wezterm.run_child_process({ "im-select.exe", "1033" })
-		end)
+		switch_to_english_input()
 	end
 end)
 
@@ -205,6 +211,13 @@ wezterm.on("update-status", function(window, pane)
 	local active_key_table = window:active_key_table()
 	local workspace = window:active_workspace()
 	local palette = window:effective_config().resolved_palette
+	local window_id = tostring(window:window_id())
+	local leader_is_active = window:leader_is_active()
+
+	if leader_is_active and not leader_state_by_window[window_id] then
+		switch_to_english_input()
+	end
+	leader_state_by_window[window_id] = leader_is_active
 
 	if active_key_table == "copy_mode" then
 		table.insert(cells, { Background = { Color = palette.ansi[4] } })
