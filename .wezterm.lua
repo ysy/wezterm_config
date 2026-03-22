@@ -167,7 +167,7 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.hide_tab_bar_if_only_one_tab = false
-config.status_update_interval = 100
+config.status_update_interval = 200
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
 	"Microsoft YaHei",
