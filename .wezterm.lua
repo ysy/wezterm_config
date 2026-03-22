@@ -161,6 +161,55 @@ config.keys = {
 			end),
 		}),
 	},
+	{
+		key = "s",
+		mods = "LEADER",
+		action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" }),
+	},
+	{
+		key = "$",
+		mods = "LEADER|SHIFT",
+		action = act.PromptInputLine({
+			description = "Enter new name for current session",
+			action = wezterm.action_callback(function(window, pane, line)
+				if not line or line == "" then
+					return
+				end
+
+				local current = window:active_workspace()
+				mux.rename_workspace(current, line)
+			end),
+		}),
+	},
+	{
+		key = "(",
+		mods = "LEADER|SHIFT",
+		action = act.SwitchWorkspaceRelative(-1),
+	},
+	{
+		key = ")",
+		mods = "LEADER|SHIFT",
+		action = act.SwitchWorkspaceRelative(1),
+	},
+	{
+		key = ":",
+		mods = "LEADER|SHIFT",
+		action = act.PromptInputLine({
+			description = "Enter name for new session",
+			action = wezterm.action_callback(function(window, pane, line)
+				if not line or line == "" then
+					return
+				end
+
+				window:perform_action(
+					act.SwitchToWorkspace({
+						name = line,
+					}),
+					pane
+				)
+			end),
+		}),
+	},
 	{ key = "]", mods = "LEADER", action = act.PasteFrom("Clipboard") },
 	{ key = "[", mods = "LEADER", action = act.ActivateCopyMode },
 	{ key = "c", mods = "LEADER", action = act.SpawnTab("CurrentPaneDomain") },
