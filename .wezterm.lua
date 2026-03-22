@@ -96,6 +96,59 @@ local function copy_mode_escape_action(window, pane)
 	window:perform_action(act.CopyMode("Close"), pane)
 end
 
+local function workspace_choices()
+	local choices = {}
+	for _, name in ipairs(mux.get_workspace_names()) do
+		table.insert(choices, {
+			id = name,
+			label = name,
+		})
+	end
+
+	table.sort(choices, function(a, b)
+		return a.label < b.label
+	end)
+
+	return choices
+end
+
+local function pane_id_from_pane(pane)
+	if pane and pane.pane_id then
+		return pane:pane_id()
+	end
+
+	return nil
+end
+
+local function delete_workspace(workspace_name)
+	local pane_ids = {}
+
+	for _, mux_window in ipairs(mux.all_windows()) do
+		if mux_window:get_workspace() == workspace_name then
+			for _, tab in ipairs(mux_window:tabs()) do
+				for _, tab_pane in ipairs(tab:panes()) do
+					local pane_id = pane_id_from_pane(tab_pane)
+					if pane_id then
+						table.insert(pane_ids, pane_id)
+					end
+				end
+			end
+		end
+	end
+
+	for _, pane_id in ipairs(pane_ids) do
+		pcall(function()
+			wezterm.run_child_process({
+				"wezterm",
+				"cli",
+				"kill-pane",
+				"--pane-id",
+				tostring(pane_id),
+			})
+		end)
+	end
+end
+
 wezterm.on("gui-startup", function(cmd)
 	local _, _, window = mux.spawn_window(cmd or {})
 	window:gui_window():maximize()
@@ -164,7 +217,30 @@ config.keys = {
 	{
 		key = "s",
 		mods = "LEADER",
-		action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" }),
+		action = wezterm.action_callback(function(window, pane)
+			window:perform_action(
+				act.InputSelector({
+					title = "Choose Session",
+					choices = workspace_choices(),
+					fuzzy = true,
+					fuzzy_description = "Select an existing session or type a new name to create one",
+					action = wezterm.action_callback(function(inner_window, inner_pane, id, label)
+						local name = id or label
+						if not name or name == "" then
+							return
+						end
+
+						inner_window:perform_action(
+							act.SwitchToWorkspace({
+								name = name,
+							}),
+							inner_pane
+						)
+					end),
+				}),
+				pane
+			)
+		end),
 	},
 	{
 		key = "$",
@@ -194,19 +270,22 @@ config.keys = {
 	{
 		key = ":",
 		mods = "LEADER|SHIFT",
-		action = act.PromptInputLine({
-			description = "Enter name for new session",
-			action = wezterm.action_callback(function(window, pane, line)
-				if not line or line == "" then
+		action = act.Confirmation({
+			message = "Delete current session/workspace?",
+			action = wezterm.action_callback(function(window, pane)
+				local current = window:active_workspace()
+				if current == "default" then
+					window:toast_notification("WezTerm", "Refusing to delete the default workspace", nil, 3000)
 					return
 				end
 
 				window:perform_action(
 					act.SwitchToWorkspace({
-						name = line,
+						name = "default",
 					}),
 					pane
 				)
+				delete_workspace(current)
 			end),
 		}),
 	},
