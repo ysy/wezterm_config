@@ -142,7 +142,7 @@ config.key_tables = {
 	-- 当你按下 / 弹出搜索框后的模式
 	search_mode = {
 		-- 搜索框里按回车：跳到匹配项并回到复制模式
-		{ key = "Enter", mods = "NONE", action = act.CopyMode("PriorMatch") },
+		{ key = "Enter", mods = "NONE", action = "ActivateCopyMode"},
 		-- 搜索框里按 Esc：取消搜索
 		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
 		-- 在搜索框里也可以通过 Ctrl+n/p 预览
