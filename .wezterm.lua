@@ -149,6 +149,8 @@ config.key_tables = {
 		{ key = "/", mods = "NONE", action = act.Search("CurrentSelectionOrEmptyString") },
 		{ key = "n", mods = "NONE", action = act.CopyMode("NextMatch") },
 		{ key = "N", mods = "NONE", action = act.CopyMode("PriorMatch") },
+		{ key = "0", mods = "NONE", action = act.CopyMode("MoveToStartOfLine") },
+		{ key = "$", mods = "SHIFT", action = act.CopyMode("MoveToEndOfLineContent") },
 		{ key = "w", mods = "NONE", action = act.CopyMode("MoveForwardWord") },
 		{ key = "b", mods = "NONE", action = act.CopyMode("MoveBackwardWord") },
 		{ key = "e", mods = "NONE", action = act.CopyMode("MoveForwardWordEnd") },
