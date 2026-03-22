@@ -1,4 +1,5 @@
 $script:wezterm_original_prompt = $function:prompt
+$script:wezterm_wrapped_commands = [System.Collections.Generic.List[string]]::new()
 
 function Set-WezTermPaneTitle {
     param(
@@ -73,7 +74,13 @@ function Resolve-WezTermWrappedExecutable {
         return $null
     }
 
-    return ($resolved.Path, $resolved.Source, $resolved.Definition | Where-Object { $_ } | Select-Object -First 1)
+    foreach ($candidate in @($resolved.Path, $resolved.Source, $resolved.Definition)) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
 }
 
 function Register-WezTermWrappedCommand {
@@ -85,7 +92,7 @@ function Register-WezTermWrappedCommand {
 
     $resolvedPath = Resolve-WezTermWrappedExecutable -CommandName $Executable
     if (-not $resolvedPath) {
-        return
+        return $false
     }
 
     $escapedExecutable = $resolvedPath.Replace("'", "''")
@@ -96,10 +103,14 @@ Invoke-WezTermTitledCommand -Program '$escapedName' -Executable '$escapedExecuta
 "@
 
     Set-Item -Path "function:global:$Name" -Value ([scriptblock]::Create($definition))
+    if (-not $script:wezterm_wrapped_commands.Contains($Name)) {
+        [void]$script:wezterm_wrapped_commands.Add($Name)
+    }
+    return $true
 }
 
 foreach ($commandName in @("nvim", "vim", "codex")) {
-    Register-WezTermWrappedCommand -Name $commandName
+    [void](Register-WezTermWrappedCommand -Name $commandName)
 }
 
 function global:wtx {
@@ -125,12 +136,16 @@ function global:Add-WezTermWrappedCommand {
         [string]$Executable = $Name
     )
 
-    Register-WezTermWrappedCommand -Name $Name -Executable $Executable
-    Write-Host "Registered WezTerm title wrapper for '$Name'."
+    if (Register-WezTermWrappedCommand -Name $Name -Executable $Executable) {
+        Write-Host "Registered WezTerm title wrapper for '$Name'."
+        return
+    }
+
+    throw "Failed to register '$Name'. Only Application and ExternalScript commands are supported."
 }
 
 function global:Show-WezTermWrappedCommands {
-    @("nvim", "vim", "codex", "wtx <program> ...")
+    @($script:wezterm_wrapped_commands | Sort-Object) + "wtx <program> ..."
 }
 
 function global:prompt {
