@@ -40,12 +40,14 @@ function Invoke-WezTermTitledCommand {
         [Parameter(Mandatory = $true)]
         [string]$Program,
         [Parameter(Mandatory = $true)]
-        [scriptblock]$Command
+        [string]$Executable,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Arguments
     )
 
     Set-WezTermPaneTitle -Program $Program
     try {
-        & $Command
+        & $Executable @Arguments
     }
     finally {
         Send-WezTermOsc7
@@ -53,16 +55,57 @@ function Invoke-WezTermTitledCommand {
     }
 }
 
-function global:nvim {
-    Invoke-WezTermTitledCommand -Program "nvim" -Command {
-        & nvim.exe @args
+function Register-WezTermWrappedCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string]$Executable = $Name
+    )
+
+    $resolved = Get-Command $Executable -CommandType Application -ErrorAction SilentlyContinue
+    if (-not $resolved) {
+        return
     }
+
+    $escapedExecutable = $resolved.Source.Replace("'", "''")
+    $escapedName = $Name.Replace("'", "''")
+    $definition = @"
+param([Parameter(ValueFromRemainingArguments = `$true)][object[]]`$CommandArgs)
+Invoke-WezTermTitledCommand -Program '$escapedName' -Executable '$escapedExecutable' -Arguments `$CommandArgs
+"@
+
+    Set-Item -Path "function:global:$Name" -Value ([scriptblock]::Create($definition))
 }
 
-function global:vim {
-    Invoke-WezTermTitledCommand -Program "vim" -Command {
-        & vim.exe @args
-    }
+foreach ($commandName in @("nvim", "vim", "codex")) {
+    Register-WezTermWrappedCommand -Name $commandName
+}
+
+function global:wtx {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Program,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [object[]]$CommandArgs
+    )
+
+    $resolved = Get-Command $Program -CommandType Application -ErrorAction Stop
+    Invoke-WezTermTitledCommand -Program $Program -Executable $resolved.Source -Arguments $CommandArgs
+}
+
+function global:Add-WezTermWrappedCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string]$Executable = $Name
+    )
+
+    Register-WezTermWrappedCommand -Name $Name -Executable $Executable
+    Write-Host "Registered WezTerm title wrapper for '$Name'."
+}
+
+function global:Show-WezTermWrappedCommands {
+    @("nvim", "vim", "codex", "wtx <program> ...")
 }
 
 function global:prompt {
