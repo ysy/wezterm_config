@@ -97,12 +97,7 @@ local function copy_mode_escape_action(window, pane)
 end
 
 local function workspace_choices()
-	local choices = {
-		{
-			id = "__create_new_workspace__",
-			label = "[Create New Session...]",
-		},
-	}
+	local choices = {}
 	for _, name in ipairs(mux.get_workspace_names()) do
 		table.insert(choices, {
 			id = name,
@@ -113,6 +108,11 @@ local function workspace_choices()
 	table.sort(choices, function(a, b)
 		return a.label < b.label
 	end)
+
+	table.insert(choices, {
+		id = "__create_new_workspace__",
+		label = "[Create New Session...]",
+	})
 
 	return choices
 end
