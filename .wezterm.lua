@@ -98,6 +98,58 @@ config.keys = {
 	{ key = "r", mods = "LEADER", action = act.ReloadConfiguration },
 }
 
+-- ==========================================
+-- 6. 复制模式与搜索模式键位增强
+-- ==========================================
+config.key_tables = {
+	-- 当你按下 Ctrl+B [ 进入的模式
+	copy_mode = {
+		-- 【1】搜索功能：按下 / 开启搜索
+		{ key = "/", mods = "NONE", action = act.Search("CurrentSelectionOrEmptyString") },
+
+		-- 【2】跳转匹配：n 下一个，N 上一个
+		{ key = "n", mods = "NONE", action = act.CopyMode("NextMatch") },
+		{ key = "N", mods = "NONE", action = act.CopyMode("PriorMatch") },
+
+		-- 【3】选中逻辑：Space 开始选中
+		{ key = "Space", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Cell" }) },
+		{ key = "v", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Cell" }) },
+		{ key = "V", mods = "NONE", action = act.CopyMode({ SetSelectionMode = "Line" }) },
+
+		-- 【4】完成复制：Enter 拷贝并自动退出模式
+		{
+			key = "Enter",
+			mods = "NONE",
+			action = act.Multiple({
+				{ CopyTo = "ClipboardAndPrimarySelection" },
+				{ CopyMode = "Close" },
+			}),
+		},
+
+		-- 退出复制模式
+		{ key = "q", mods = "NONE", action = act.CopyMode("Close") },
+		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
+
+		-- Vim 风格移动 (确保 h j k l 可用)
+		{ key = "h", mods = "NONE", action = act.CopyMode("MoveLeft") },
+		{ key = "j", mods = "NONE", action = act.CopyMode("MoveDown") },
+		{ key = "k", mods = "NONE", action = act.CopyMode("MoveUp") },
+		{ key = "l", mods = "NONE", action = act.CopyMode("MoveRight") },
+		{ key = "g", mods = "NONE", action = act.CopyMode("MoveToScrollbackTop") },
+		{ key = "G", mods = "SHIFT", action = act.CopyMode("MoveToScrollbackBottom") },
+	},
+
+	-- 当你按下 / 弹出搜索框后的模式
+	search_mode = {
+		-- 搜索框里按回车：跳到匹配项并回到复制模式
+		{ key = "Enter", mods = "NONE", action = act.CopyMode("PriorMatch") },
+		-- 搜索框里按 Esc：取消搜索
+		{ key = "Escape", mods = "NONE", action = act.CopyMode("Close") },
+		-- 在搜索框里也可以通过 Ctrl+n/p 预览
+		{ key = "n", mods = "CTRL", action = act.CopyMode("NextMatch") },
+		{ key = "p", mods = "CTRL", action = act.CopyMode("PriorMatch") },
+	},
+}
 -- 数字键直达 (Leader + 1-9)
 for i = 1, 9 do
 	table.insert(config.keys, {
