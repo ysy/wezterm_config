@@ -137,8 +137,10 @@ config.keys = {
 				local id = tostring(tab:tab_id())
 				if line and line ~= "" then
 					custom_titles[id] = line
+					tab:set_title(line)
 				elseif line == "" then
 					custom_titles[id] = nil
+					tab:set_title("")
 				end
 			end),
 		}),
