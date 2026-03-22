@@ -47,14 +47,6 @@ local function safe_fallback_title(tab)
 	end
 
 	local process_name = pane.foreground_process_name
-	if not process_name and pane.get_foreground_process_name then
-		local ok, value = pcall(function()
-			return pane:get_foreground_process_name()
-		end)
-		if ok then
-			process_name = value
-		end
-	end
 
 	return normalize_process_name(process_name) or "Terminal"
 end
@@ -138,14 +130,6 @@ local function prompt_for_new_workspace(window, pane)
 	)
 end
 
-local function pane_id_from_pane(pane)
-	if pane and pane.pane_id then
-		return pane:pane_id()
-	end
-
-	return nil
-end
-
 local function delete_workspace(workspace_name)
 	local pane_ids = {}
 
@@ -153,10 +137,7 @@ local function delete_workspace(workspace_name)
 		if mux_window:get_workspace() == workspace_name then
 			for _, tab in ipairs(mux_window:tabs()) do
 				for _, tab_pane in ipairs(tab:panes()) do
-					local pane_id = pane_id_from_pane(tab_pane)
-					if pane_id then
-						table.insert(pane_ids, pane_id)
-					end
+					table.insert(pane_ids, tab_pane:pane_id())
 				end
 			end
 		end
