@@ -176,13 +176,37 @@ wezterm.on("window-focus-changed", function(window, pane)
 	end
 end)
 
--- 状态栏显示 Workspace
+-- ==========================================
+-- 6. 状态栏：显示模式指示器 + Workspace
+-- ==========================================
 wezterm.on("update-status", function(window, pane)
+	local cells = {}
+	local active_key_table = window:active_key_table()
 	local workspace = window:active_workspace()
-	window:set_right_status(wezterm.format({
-		{ Foreground = { Color = "#a6e3a1" } },
-		{ Text = " 󱂬 " .. workspace .. " " },
-	}))
+
+	-- 【核心】获取当前主题已解析的完整色板
+	local palette = window:effective_config().resolved_palette
+
+	-- 1. 模式指示器逻辑
+	if active_key_table == "copy_mode" then
+		-- 使用主题定义的 ANSI 黄色 (通常是 ansi[4])
+		table.insert(cells, { Background = { Color = palette.ansi[4] } })
+		table.insert(cells, { Foreground = { Color = palette.background } }) -- 文字使用背景色以形成反差
+		table.insert(cells, { Text = " 󰆏 COPY " })
+	elseif active_key_table == "search_mode" then
+		-- 使用主题定义的 ANSI 绿色 (通常是 ansi[3])
+		table.insert(cells, { Background = { Color = palette.ansi[3] } })
+		table.insert(cells, { Foreground = { Color = palette.background } })
+		table.insert(cells, { Text = " 󰍉 SEARCH " })
+	end
+
+	-- 2. Workspace 名称
+	-- 同样使用主题的绿色作为文字颜色，保持视觉统一
+	table.insert(cells, { Background = { Color = "none" } })
+	table.insert(cells, { Foreground = { Color = palette.ansi[3] } })
+	table.insert(cells, { Text = " 󱂬 " .. workspace .. " " })
+
+	window:set_right_status(wezterm.format(cells))
 end)
 
 return config
