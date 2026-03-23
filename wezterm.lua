@@ -11,6 +11,17 @@ local workspace_history = {
 
 local config = wezterm.config_builder()
 
+local function is_windows()
+	return wezterm.target_triple:find("windows") ~= nil
+end
+
+local function is_macos()
+	return wezterm.target_triple:find("apple") ~= nil
+end
+
+local function is_linux()
+	return wezterm.target_triple:find("linux") ~= nil
+end
 local function basename(path)
 	if not path or path == "" then
 		return nil
@@ -195,6 +206,7 @@ config.hide_tab_bar_if_only_one_tab = false
 config.status_update_interval = 200
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
+	-- { family = "JetBrainsMono Nerd Font", weight = "Regular" },
 	-- { family = "FiraCode Nerd Font", weight = "Light" },
 	"Microsoft YaHei",
 })
