@@ -19,8 +19,10 @@ function Backup-IfExists {
     }
 }
 
-$weztermSource = Join-Path $RepoRoot ".wezterm.lua"
-$weztermTarget = Join-Path $HomePath ".wezterm.lua"
+$weztermSource = Join-Path $RepoRoot "wezterm.lua"
+$user = $env:USERNAME
+$weztermTarget = "C:\\Users\\$user\\.config\\wezterm\\wezterm.config"
+$weztermTargetDir = Split-Path -Parent $weztermTarget
 
 $profileSource = Join-Path $RepoRoot "Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1"
 $profileDir = Join-Path $HomePath "Documents\\PowerShell"
@@ -35,6 +37,7 @@ if (-not (Test-Path $profileSource)) {
 }
 
 New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+New-Item -ItemType Directory -Force -Path $weztermTargetDir | Out-Null
 
 Backup-IfExists -Path $weztermTarget
 Backup-IfExists -Path $profileTarget

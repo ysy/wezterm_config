@@ -1,6 +1,6 @@
 /*
 !/.gitignore
-!/.wezterm.lua
+!/wezterm.lua
 !/README.md
 !/scripts/
 !/scripts/install.ps1
