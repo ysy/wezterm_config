@@ -408,6 +408,12 @@ wezterm.on("update-status", function(window, pane)
 		table.insert(cells, { Text = " 󰍉 SEARCH " })
 	end
 
+	if leader_is_active then
+		table.insert(cells, { Background = { Color = palette.ansi[5] } })
+		table.insert(cells, { Foreground = { Color = palette.background } })
+		table.insert(cells, { Text = " 󰘳 LEADER " })
+	end
+
 	table.insert(cells, { Background = { Color = "none" } })
 	table.insert(cells, { Foreground = { Color = palette.ansi[3] } })
 	table.insert(cells, { Text = " 󱂬 " .. workspace .. " " })
