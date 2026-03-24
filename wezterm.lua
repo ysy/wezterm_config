@@ -314,6 +314,7 @@ config.keys = {
 	{ key = "c", mods = "LEADER", action = act.SpawnTab("CurrentPaneDomain") },
 	{ key = "n", mods = "LEADER", action = act.ActivateTabRelative(1) },
 	{ key = "p", mods = "LEADER", action = act.ActivateTabRelative(-1) },
+	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
 	{ key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 	{ key = "r", mods = "LEADER", action = act.ReloadConfiguration },
 }
