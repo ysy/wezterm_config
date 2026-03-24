@@ -161,7 +161,14 @@ wezterm.on("gui-startup", function(cmd)
 	window:gui_window():maximize()
 end)
 
-config.default_prog = { "pwsh.exe", "-NoLogo" }
+config.default_prog = {
+	"pwsh.exe",
+	"-NoLogo",
+	"-NoExit",
+	"-Command",
+	"Set-Location -LiteralPath 'C:\\PRJS'",
+}
+config.default_cwd = "C:/PRJS/"
 config.color_scheme = "Catppuccin Mocha"
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
