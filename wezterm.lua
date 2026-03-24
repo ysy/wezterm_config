@@ -173,7 +173,7 @@ config.font = wezterm.font_with_fallback({
 	-- { family = "FiraCode Nerd Font", weight = "Light" },
 	"Microsoft YaHei",
 })
-config.font_size = 11.0
+config.font_size = 12.0
 
 config.mouse_bindings = {
 	{ event = { Up = { streak = 1, button = "Left" } }, mods = "NONE", action = act.CompleteSelection("Clipboard") },
