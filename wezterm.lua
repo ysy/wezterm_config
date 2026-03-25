@@ -202,10 +202,6 @@ config.font_size = 12.0
 -- Cursor best-practice (stability first, especially for nested TUI: nvim -> lazygit)
 config.default_cursor_style = "SteadyBlock"
 config.cursor_blink_rate = 0
-config.cursor_blink_ease_in = "Constant"
-config.cursor_blink_ease_out = "Constant"
-config.animation_fps = 60
-config.max_fps = 60
 
 config.mouse_bindings = {
 	{ event = { Up = { streak = 1, button = "Left" } }, mods = "NONE", action = act.CompleteSelection("Clipboard") },
