@@ -4,6 +4,10 @@ local act = wezterm.action
 
 local custom_titles = {}
 local leader_state_by_window = {}
+local workspace_history = {
+	current = nil,
+	last = nil,
+}
 
 local config = wezterm.config_builder()
 
@@ -68,7 +72,7 @@ end
 
 local function switch_to_english_input()
 	pcall(function()
-		wezterm.run_child_process({ "im-select.exe", "1033" })
+		wezterm.run_child_process({ "im-select.exe"})
 	end)
 end
 
@@ -86,6 +90,20 @@ local function copy_mode_escape_action(window, pane)
 	end
 
 	window:perform_action(act.CopyMode("Close"), pane)
+end
+
+local function switch_to_previous_workspace(window, pane)
+	local previous_workspace = workspace_history.last
+	if not previous_workspace or previous_workspace == "" then
+		return
+	end
+
+	window:perform_action(
+		act.SwitchToWorkspace({
+			name = previous_workspace,
+		}),
+		pane
+	)
 end
 
 local function workspace_choices()
@@ -314,6 +332,20 @@ config.keys = {
 	{ key = "c", mods = "LEADER", action = act.SpawnTab("CurrentPaneDomain") },
 	{ key = "n", mods = "LEADER", action = act.ActivateTabRelative(1) },
 	{ key = "p", mods = "LEADER", action = act.ActivateTabRelative(-1) },
+	{
+		key = "w",
+		mods = "LEADER",
+		action = wezterm.action_callback(function(window, pane)
+			switch_to_previous_workspace(window, pane)
+		end),
+	},
+	{
+		key = "phys:w",
+		mods = "LEADER",
+		action = wezterm.action_callback(function(window, pane)
+			switch_to_previous_workspace(window, pane)
+		end),
+	},
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
 	{ key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 	{ key = "r", mods = "LEADER", action = act.ReloadConfiguration },
@@ -398,8 +430,15 @@ wezterm.on("update-status", function(window, pane)
 	local active_key_table = window:active_key_table()
 	local workspace = window:active_workspace()
 	local palette = window:effective_config().resolved_palette
-	local window_id = tostring(window:window_id())
+	local window_id = tostring(window)
 	local leader_is_active = window:leader_is_active()
+
+	if not workspace_history.current then
+		workspace_history.current = workspace
+	elseif workspace ~= workspace_history.current then
+		workspace_history.last = workspace_history.current
+		workspace_history.current = workspace
+	end
 
 	if leader_is_active and not leader_state_by_window[window_id] then
 		switch_to_english_input()
