@@ -234,8 +234,9 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, cfg, hover, max_width)
 	}
 end)
 
-config.leader = { key = "b", mods = "CTRL", timeout_milliseconds = 2000 }
+config.leader = { key = "F12", mods = "CTRL", timeout_milliseconds = 2000 }
 config.keys = {
+	-- { key = "b", mods = "CTRL", action = act.DisableDefaultAssignment },
 	{
 		key = ",",
 		mods = "LEADER",
@@ -355,6 +356,28 @@ config.keys = {
 	},
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
 	{ key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
+	{
+		key = "\\",
+		mods = "LEADER",
+		action = act.SplitHorizontal({
+			domain = "CurrentPaneDomain",
+		}),
+	},
+	{
+		key = "-",
+		mods = "LEADER",
+		action = act.SplitVertical({
+			domain = "CurrentPaneDomain",
+		}),
+	},
+	{ key = "h", mods = "LEADER", action = act.ActivatePaneDirection("Left") },
+	{ key = "j", mods = "LEADER", action = act.ActivatePaneDirection("Down") },
+	{ key = "k", mods = "LEADER", action = act.ActivatePaneDirection("Up") },
+	{ key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
+	{ key = "h", mods = "LEADER|CTRL", action = act.AdjustPaneSize({ "Left", 6 }) },
+	{ key = "j", mods = "LEADER|CTRL", action = act.AdjustPaneSize({ "Down", 6 }) },
+	{ key = "k", mods = "LEADER|CTRL", action = act.AdjustPaneSize({ "Up", 6 }) },
+	{ key = "l", mods = "LEADER|CTRL", action = act.AdjustPaneSize({ "Right", 6 }) },
 	{ key = "r", mods = "LEADER", action = act.ReloadConfiguration },
 }
 
