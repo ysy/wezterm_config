@@ -391,7 +391,28 @@ config.keys = {
 		end),
 	},
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
-	{ key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
+	{
+		key = "x",
+		mods = "LEADER",
+		action = wezterm.action_callback(function(window, pane)
+			local proc = pane:get_foreground_process_name()
+			local name = normalize_process_name(proc)
+
+			if
+				not name
+				or name == ""
+				or name:find("pwsh")
+				or name:find("powershell")
+				or name:find("cmd")
+				or name:find("bash")
+				or name:find("zsh")
+			then
+				window:perform_action(act.CloseCurrentPane({ confirm = false }), pane)
+			else
+				window:perform_action(act.CloseCurrentPane({ confirm = true }), pane)
+			end
+		end),
+	},
 	{
 		key = "\\",
 		mods = "LEADER",
