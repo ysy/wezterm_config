@@ -194,6 +194,12 @@ wezterm.on("gui-attached", function(domain)
 	end)
 end)
 
+config.set_environment_variables = {
+	TERM = "xterm-256color",
+	PAGER = "less",
+	LESS = "-R",
+}
+
 config.default_prog = {
 	"pwsh.exe",
 	"-NoLogo",
