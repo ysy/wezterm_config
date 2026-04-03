@@ -174,9 +174,15 @@ local function delete_workspace(workspace_name)
 	end
 end
 
-wezterm.on("gui-startup", function(cmd)
-	local _, _, window = mux.spawn_window(cmd or {})
-	window:gui_window():maximize()
+-- When GUI connects to a mux domain, maximize after a short delay
+-- (the GUI window isn't ready synchronously during gui-attached)
+wezterm.on("gui-attached", function(domain)
+	wezterm.time.call_after(0.3, function()
+		local windows = wezterm.gui.gui_windows()
+		for _, w in ipairs(windows) do
+			w:maximize()
+		end
+	end)
 end)
 
 config.default_prog = {
@@ -202,6 +208,40 @@ config.font_size = 12.0
 -- Cursor best-practice (stability first, especially for nested TUI: nvim -> lazygit)
 config.default_cursor_style = "SteadyBlock"
 config.cursor_blink_rate = 0
+
+-- ── Multiplexer: Unix Domain (local session persistence) ──────────────
+-- The mux-server daemon owns all sessions. The GUI is just a "viewer".
+-- Closing the GUI does NOT kill sessions; re-opening restores everything.
+config.unix_domains = {
+	{
+		name = 'unix',
+	},
+}
+-- Auto-connect to the unix mux domain on GUI startup.
+-- This also auto-starts wezterm-mux-server if not already running.
+config.default_gui_startup_args = { 'connect', 'unix' }
+
+-- ── Multiplexer: TLS Server (for remote GUI clients) ──────────────────
+-- Remote wezterm-gui instances connect here over TLS to share the same
+-- sessions, tabs, and workspaces — like tmux but with full GUI.
+config.tls_servers = {
+	{
+		bind_address = '0.0.0.0:6327',
+	},
+}
+
+-- 本地 SSH 复用测试连接 (装完 OpenSSH 服务后可用)
+-- 用法: wezterm connect local-ssh
+config.ssh_domains = {
+	{
+		name = 'local-ssh',
+		remote_address = '127.0.0.1',
+		username = 'ysy',
+		multiplexing = 'WezTerm',
+	},
+}
+
+
 
 config.mouse_bindings = {
 	{ event = { Up = { streak = 1, button = "Left" } }, mods = "NONE", action = act.CompleteSelection("Clipboard") },
