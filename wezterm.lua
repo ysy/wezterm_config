@@ -2,6 +2,11 @@ local wezterm = require("wezterm")
 local mux = wezterm.mux
 local act = wezterm.action
 
+-- ── 全局开关：是否启用多路复用 (Mux) 模式 ────────────────────────────
+-- true:  启用 unix_domains, 支持远程连接, 关闭窗口不掉线 (需处理确认框和分页副作用)
+-- false: 回到原生模式, 响应更快, 自动命名更准, 但不支持远程重连
+local USE_MUX = true
+
 local custom_titles = {}
 local leader_state_by_window = {}
 local workspace_history = {
@@ -50,18 +55,24 @@ local function safe_fallback_title(tab)
 		return "Terminal"
 	end
 
-	local proc = normalize_process_name(pane.foreground_process_name) or "pwsh"
-	local cwd = ""
-	local cwd_uri = pane.current_working_dir
-	if cwd_uri then
-		cwd = basename(cwd_uri.file_path) or ""
-	end
+	if USE_MUX then
+		-- Mux 模式下，手动从当前工作目录获取信息，因为自动同步可能较慢
+		local proc = normalize_process_name(pane.foreground_process_name) or "pwsh"
+		local cwd = ""
+		local cwd_uri = pane.current_working_dir
+		if cwd_uri then
+			cwd = basename(cwd_uri.file_path) or ""
+		end
 
-	if cwd ~= "" then
-		return proc .. "-" .. cwd
+		if cwd ~= "" then
+			return proc .. "-" .. cwd
+		end
+		return proc
+	else
+		-- 原生模式：直接使用前台进程名
+		local process_name = pane.foreground_process_name
+		return normalize_process_name(process_name) or "Terminal"
 	end
-
-	return proc
 end
 
 local function resolved_tab_title(tab)
@@ -81,7 +92,7 @@ end
 
 local function switch_to_english_input()
 	pcall(function()
-		wezterm.run_child_process({ "im-select.exe"})
+		wezterm.run_child_process({ "im-select.exe" })
 	end)
 end
 
@@ -183,22 +194,44 @@ local function delete_workspace(workspace_name)
 	end
 end
 
--- When GUI connects to a mux domain, maximize after a short delay
--- (the GUI window isn't ready synchronously during gui-attached)
-wezterm.on("gui-attached", function(domain)
-	wezterm.time.call_after(0.3, function()
-		local windows = wezterm.gui.gui_windows()
-		for _, w in ipairs(windows) do
-			w:maximize()
-		end
+if USE_MUX then
+	-- When GUI connects to a mux domain, maximize after a short delay
+	-- (the GUI window isn't ready synchronously during gui-attached)
+	wezterm.on("gui-attached", function(domain)
+		wezterm.time.call_after(0.3, function()
+			local windows = wezterm.gui.gui_windows()
+			for _, w in ipairs(windows) do
+				w:maximize()
+			end
+		end)
 	end)
-end)
 
-config.set_environment_variables = {
-	TERM = "xterm-256color",
-	PAGER = "less",
-	LESS = "-R",
-}
+	-- ── Multiplexer 环境特定配置 ──────────────────────────────────────
+	config.unix_domains = { { name = "unix" } }
+	config.default_gui_startup_args = { "connect", "unix" }
+	config.tls_servers = { { bind_address = "0.0.0.0:6327" } }
+	config.ssh_domains = {
+		{
+			name = "local-ssh",
+			remote_address = "127.0.0.1",
+			username = "ysy",
+			multiplexing = "WezTerm",
+		},
+	}
+
+	-- 修复 Mux 下的分页和终端识别问题
+	config.set_environment_variables = {
+		TERM = "xterm-256color",
+		PAGER = "less",
+		LESS = "-R",
+	}
+else
+	-- 原生模式启动逻辑：直接最大化窗口
+	wezterm.on("gui-startup", function(cmd)
+		local _, _, window = mux.spawn_window(cmd or {})
+		window:gui_window():maximize()
+	end)
+end
 
 config.default_prog = {
 	"pwsh.exe",
@@ -223,40 +256,6 @@ config.font_size = 12.0
 -- Cursor best-practice (stability first, especially for nested TUI: nvim -> lazygit)
 config.default_cursor_style = "SteadyBlock"
 config.cursor_blink_rate = 0
-
--- ── Multiplexer: Unix Domain (local session persistence) ──────────────
--- The mux-server daemon owns all sessions. The GUI is just a "viewer".
--- Closing the GUI does NOT kill sessions; re-opening restores everything.
-config.unix_domains = {
-	{
-		name = 'unix',
-	},
-}
--- Auto-connect to the unix mux domain on GUI startup.
--- This also auto-starts wezterm-mux-server if not already running.
-config.default_gui_startup_args = { 'connect', 'unix' }
-
--- ── Multiplexer: TLS Server (for remote GUI clients) ──────────────────
--- Remote wezterm-gui instances connect here over TLS to share the same
--- sessions, tabs, and workspaces — like tmux but with full GUI.
-config.tls_servers = {
-	{
-		bind_address = '0.0.0.0:6327',
-	},
-}
-
--- 本地 SSH 复用测试连接 (装完 OpenSSH 服务后可用)
--- 用法: wezterm connect local-ssh
-config.ssh_domains = {
-	{
-		name = 'local-ssh',
-		remote_address = '127.0.0.1',
-		username = 'ysy',
-		multiplexing = 'WezTerm',
-	},
-}
-
-
 
 config.mouse_bindings = {
 	{ event = { Up = { streak = 1, button = "Left" } }, mods = "NONE", action = act.CompleteSelection("Clipboard") },
@@ -286,6 +285,34 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, cfg, hover, max_width)
 end)
 
 config.leader = { key = "F12", mods = "CTRL", timeout_milliseconds = 2000 }
+
+-- ── 根据模式选择关闭行为 ───────────────────────────────────────────
+local close_action
+if USE_MUX then
+	-- Mux 模式：使用回调绕过“多路复用会话始终提示确认”的限制
+	close_action = wezterm.action_callback(function(window, pane)
+		local proc = pane:get_foreground_process_name()
+		local name = normalize_process_name(proc)
+
+		if
+			not name
+			or name == ""
+			or name:find("pwsh")
+			or name:find("powershell")
+			or name:find("cmd")
+			or name:find("bash")
+			or name:find("zsh")
+		then
+			window:perform_action(act.CloseCurrentPane({ confirm = false }), pane)
+		else
+			window:perform_action(act.CloseCurrentPane({ confirm = true }), pane)
+		end
+	end)
+else
+	-- 原生模式：直接使用内置确认（会自动根据进程识别是否需要确认）
+	close_action = act.CloseCurrentPane({ confirm = true })
+end
+
 config.keys = {
 	-- { key = "b", mods = "CTRL", action = act.DisableDefaultAssignment },
 	{
@@ -406,28 +433,7 @@ config.keys = {
 		end),
 	},
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
-	{
-		key = "x",
-		mods = "LEADER",
-		action = wezterm.action_callback(function(window, pane)
-			local proc = pane:get_foreground_process_name()
-			local name = normalize_process_name(proc)
-
-			if
-				not name
-				or name == ""
-				or name:find("pwsh")
-				or name:find("powershell")
-				or name:find("cmd")
-				or name:find("bash")
-				or name:find("zsh")
-			then
-				window:perform_action(act.CloseCurrentPane({ confirm = false }), pane)
-			else
-				window:perform_action(act.CloseCurrentPane({ confirm = true }), pane)
-			end
-		end),
-	},
+	{ key = "x", mods = "LEADER", action = close_action },
 	{
 		key = "\\",
 		mods = "LEADER",
