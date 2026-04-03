@@ -50,9 +50,18 @@ local function safe_fallback_title(tab)
 		return "Terminal"
 	end
 
-	local process_name = pane.foreground_process_name
+	local proc = normalize_process_name(pane.foreground_process_name) or "pwsh"
+	local cwd = ""
+	local cwd_uri = pane.current_working_dir
+	if cwd_uri then
+		cwd = basename(cwd_uri.file_path) or ""
+	end
 
-	return normalize_process_name(process_name) or "Terminal"
+	if cwd ~= "" then
+		return proc .. "-" .. cwd
+	end
+
+	return proc
 end
 
 local function resolved_tab_title(tab)
