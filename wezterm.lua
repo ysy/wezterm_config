@@ -16,6 +16,40 @@ local workspace_history = {
 
 local config = wezterm.config_builder()
 
+config.ssh_backend = "Ssh2"
+
+config.ssh_domains = {
+	{
+		name = "dell",
+		remote_address = "server",
+		username = "username",
+
+		multiplexing = "WezTerm",
+
+		no_agent_auth = true,
+		ssh_option = {
+			preferredauthentications = "keyboard-interactive,password",
+			pubkeyauthentication = "no",
+			kbdinteractiveauthentication = "yes",
+			passwordauthentication = "yes",
+			identitiesonly = "yes",
+			identityagent = "none",
+			identityfile = "none",
+		},
+	},
+}
+
+local function is_windows()
+	return wezterm.target_triple:find("windows") ~= nil
+end
+
+local function is_macos()
+	return wezterm.target_triple:find("apple") ~= nil
+end
+
+local function is_linux()
+	return wezterm.target_triple:find("linux") ~= nil
+end
 local function basename(path)
 	if not path or path == "" then
 		return nil
@@ -237,14 +271,17 @@ else
 	end)
 end
 
-config.default_prog = {
-	"pwsh.exe",
-	"-NoLogo",
-	"-NoExit",
-	"-Command",
-	"Set-Location -LiteralPath 'C:\\PRJS'",
-}
-config.default_cwd = "C:/PRJS/"
+if is_windows() then
+	config.default_prog = {
+		"pwsh.exe",
+		"-NoLogo",
+		"-NoExit",
+		"-Command",
+		"Set-Location -LiteralPath 'C:\\PRJS'",
+	}
+	config.default_cwd = "C:/PRJS/"
+end
+
 config.color_scheme = "Catppuccin Mocha"
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
@@ -253,6 +290,7 @@ config.hide_tab_bar_if_only_one_tab = false
 config.status_update_interval = 200
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
+	-- { family = "JetBrainsMono Nerd Font", weight = "Regular" },
 	-- { family = "FiraCode Nerd Font", weight = "Light" },
 	"Microsoft YaHei",
 })
