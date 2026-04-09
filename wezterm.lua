@@ -222,8 +222,12 @@ if USE_MUX then
 	-- 修复 Mux 下的分页和终端识别问题
 	config.set_environment_variables = {
 		TERM = "xterm-256color",
+		COLORTERM = "truecolor",
 		PAGER = "less",
-		LESS = "-R",
+		-- -F: 如果内容不足一屏则自动退出
+		-- -R: 支持彩色输出
+		-- -X: 退出时不清理屏幕，保留内容
+		LESS = "-FRX",
 	}
 else
 	-- 原生模式启动逻辑：直接最大化窗口
