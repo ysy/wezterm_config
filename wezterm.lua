@@ -11,6 +11,29 @@ local workspace_history = {
 
 local config = wezterm.config_builder()
 
+config.ssh_backend = "Ssh2"
+
+config.ssh_domains = {
+	{
+		name = "dell",
+		remote_address = "server",
+		username = "username",
+
+		multiplexing = "WezTerm",
+
+		no_agent_auth = true,
+		ssh_option = {
+			preferredauthentications = "keyboard-interactive,password",
+			pubkeyauthentication = "no",
+			kbdinteractiveauthentication = "yes",
+			passwordauthentication = "yes",
+			identitiesonly = "yes",
+			identityagent = "none",
+			identityfile = "none",
+		},
+	},
+}
+
 local function is_windows()
 	return wezterm.target_triple:find("windows") ~= nil
 end
