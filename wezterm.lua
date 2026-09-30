@@ -44,15 +44,27 @@ local function looks_like_managed_title(title)
 	return title:match("^[^%s]+%-.+$") ~= nil
 end
 
+local proc_name_cache = {}
+
 local function safe_fallback_title(tab)
 	local pane = tab.active_pane
 	if not pane then
 		return "Terminal"
 	end
 
-	local process_name = pane.foreground_process_name
+	local pane_id = tostring(pane.pane_id)
+	local now = os.time()
+	local cached = proc_name_cache[pane_id]
 
-	return normalize_process_name(process_name) or "Terminal"
+	if cached and (now - cached.time < 2) then
+		return cached.name or "Terminal"
+	end
+
+	local process_name = pane.foreground_process_name
+	local norm_name = normalize_process_name(process_name)
+	proc_name_cache[pane_id] = { name = norm_name, time = now }
+
+	return norm_name or "Terminal"
 end
 
 local function resolved_tab_title(tab)
@@ -72,7 +84,7 @@ end
 
 local function switch_to_english_input()
 	pcall(function()
-		wezterm.run_child_process({ "im-select.exe"})
+		wezterm.background_child_process({ "im-select.exe", "1033" })
 	end)
 end
 
@@ -192,7 +204,9 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.hide_tab_bar_if_only_one_tab = false
-config.status_update_interval = 200
+config.status_update_interval = 1000
+config.max_fps = 60
+config.animation_fps = 1
 config.font = wezterm.font_with_fallback({
 	{ family = "FiraCode Nerd Font", weight = "Regular" },
 	-- { family = "FiraCode Nerd Font", weight = "Light" },
